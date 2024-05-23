@@ -90,21 +90,23 @@ def main():
     print(f"Found files: {input_files}")
 
     print(f"Loading model: {MODEL_PATH}")
-    model = torch.jit.load(MODEL_PATH)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = torch.jit.load(MODEL_PATH).to(device)
     model.eval()
 
     for input_file in input_files:
         input_tensor, original_shape = read_image(input_file)
+        input_tensor = input_tensor.to(device)
 
         print("Running inference...")
-        result = np.zeros_like(input_tensor, dtype=np.float32)
+        result = np.zeros_like(input_tensor.cpu().numpy(), dtype=np.float32)
 
         # Process each image independently
         for i in range(input_tensor.shape[0]):
             for j in range(input_tensor.shape[1]):
-                single_image_tensor = input_tensor[i, j, :, :].unsqueeze(0).unsqueeze(0)
+                single_image_tensor = input_tensor[i, j, :, :].unsqueeze(0).unsqueeze(0).to(device)
                 with torch.no_grad():
-                    denoised_image = model(single_image_tensor).squeeze().numpy()
+                    denoised_image = model(single_image_tensor).squeeze().cpu().numpy()
                 result[i, j, :, :] = denoised_image
 
         print(f"Output shape: {result.shape}")
